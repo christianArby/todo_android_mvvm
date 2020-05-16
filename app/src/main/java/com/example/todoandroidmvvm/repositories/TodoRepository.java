@@ -26,7 +26,7 @@ public class TodoRepository {
 
     // Singleton patter
     private static TodoRepository instance;
-    MutableLiveData<JSONObject> todosLiveData = new MutableLiveData<>();
+    private MutableLiveData<JSONObject> todosLiveData = new MutableLiveData<>();
 
     public static TodoRepository getInstance() {
         if (instance == null){
@@ -49,6 +49,7 @@ public class TodoRepository {
 
                         } catch (JSONException e) {
                             e.printStackTrace();
+                            todosLiveData.setValue(new JSONObject());
                         }
                     }
                 }, new Response.ErrorListener() {

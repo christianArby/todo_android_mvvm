@@ -20,19 +20,16 @@ import java.util.ArrayList;
 
 public class TodosAdapter extends RecyclerView.Adapter<ListViewHolder> {
 
-    private JSONObject data;
-    private ArrayList<Long> timestamps;
+    private JSONObject data = new JSONObject();
     private OnRemoveTodoClickedListener onRemoveTodoClickedListener;
 
-    public void updateData(JSONObject data, ArrayList<Long> timestamps) {
+    public void updateData(JSONObject data) {
         this.data = data;
-        this.timestamps = timestamps;
         this.notifyDataSetChanged();
     }
 
-    public TodosAdapter(JSONObject data, ArrayList<Long> timestamps, OnRemoveTodoClickedListener onRemoveTodoClickedListener) {
+    public TodosAdapter(JSONObject data, OnRemoveTodoClickedListener onRemoveTodoClickedListener) {
         this.data = data;
-        this.timestamps = timestamps;
         this.onRemoveTodoClickedListener = onRemoveTodoClickedListener;
     }
 
@@ -48,7 +45,7 @@ public class TodosAdapter extends RecyclerView.Adapter<ListViewHolder> {
         Gson gson = new Gson();
 
         try {
-            TodoModel todoModel = gson.fromJson(data.get(timestamps.get(position).toString()).toString(), TodoModel.class);
+            TodoModel todoModel = gson.fromJson(data.get(data.names().getString(position)).toString(), TodoModel.class);
             holder.setTodoText(todoModel.getText());
             holder.setOnRemoveTodoClickListener(todoModel.getTs().toString(), onRemoveTodoClickedListener);
 
@@ -61,6 +58,6 @@ public class TodosAdapter extends RecyclerView.Adapter<ListViewHolder> {
 
     @Override
     public int getItemCount() {
-        return timestamps.size();
+        return data.length();
     }
 }

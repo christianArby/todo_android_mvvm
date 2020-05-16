@@ -19,12 +19,7 @@ import android.widget.ImageView;
 import com.example.todoandroidmvvm.adapters.TodosAdapter;
 import com.example.todoandroidmvvm.fragments.FirstPageFragment;
 import com.example.todoandroidmvvm.interfaces.OnRemoveTodoClickedListener;
-import com.example.todoandroidmvvm.models.TodoModel;
 import com.example.todoandroidmvvm.viewmodels.MainActivityViewModel;
-import com.google.gson.Gson;
-
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.ArrayList;
 
@@ -56,26 +51,12 @@ public class MainActivity extends AppCompatActivity implements FirstPageFragment
         mainActivityViewModel.getTodosLiveData().observe(this, new Observer<JSONObject>() {
             @Override
             public void onChanged(JSONObject jsonObject) {
-
-                try {
-                    Gson gson = new Gson();
-                    JSONArray keys = jsonObject.names();
-                    if (keys!=null) {
-                        ArrayList<Long> timestamps = new ArrayList<>();
-                        for (int i = 0; i < keys.length(); i++) {
-                            String key = keys.getString(i);
-                            TodoModel todoModel = gson.fromJson(jsonObject.get(key).toString(), TodoModel.class);
-                            timestamps.add(todoModel.getTs());
-                        }
-                        todosAdapter.updateData(jsonObject, timestamps);
-                        progress_bar_container.setVisibility(View.GONE);
-                    } else {
-                        showFirstPageFragment();
-                        progress_bar_container.setVisibility(View.GONE);
-                    }
-
-                } catch (JSONException e) {
-                    e.printStackTrace();
+                if (jsonObject.length()!=0) {
+                    todosAdapter.updateData(jsonObject);
+                    progress_bar_container.setVisibility(View.GONE);
+                } else {
+                    showFirstPageFragment();
+                    progress_bar_container.setVisibility(View.GONE);
                 }
             }
         });
@@ -112,7 +93,7 @@ public class MainActivity extends AppCompatActivity implements FirstPageFragment
             }
         });
 
-        todosAdapter = new TodosAdapter(new JSONObject(), new ArrayList<Long>(), onRemoveTodoClickedListener);
+        todosAdapter = new TodosAdapter(new JSONObject(),  onRemoveTodoClickedListener);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(linearLayoutManager);
         recyclerView.setAdapter(todosAdapter);
