@@ -4,6 +4,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.content.Context;
@@ -17,13 +19,16 @@ import android.widget.ImageView;
 import com.example.todoandroidmvvm.adapters.TodosAdapter;
 import com.example.todoandroidmvvm.fragments.FirstPageFragment;
 import com.example.todoandroidmvvm.interfaces.OnRemoveTodoClickedListener;
-import com.example.todoandroidmvvm.presenter.IMainPresenter;
-import com.example.todoandroidmvvm.presenter.MainPresenter;
-import com.example.todoandroidmvvm.view.IMainView;
+import com.example.todoandroidmvvm.models.TodoModel;
+import com.example.todoandroidmvvm.viewmodels.MainActivityViewModel;
+import com.google.gson.Gson;
+
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements FirstPageFragment.OnFirstPageFragmentInteractionListener, IMainView {
+public class MainActivity extends AppCompatActivity implements FirstPageFragment.OnFirstPageFragmentInteractionListener {
 
     private TodosAdapter todosAdapter;
     private FragmentManager fragmentManager;
@@ -31,8 +36,7 @@ public class MainActivity extends AppCompatActivity implements FirstPageFragment
     private ImageView btn_add_todo;
     private ConstraintLayout progress_bar_container;
     private RecyclerView recyclerView;
-
-    IMainPresenter mainPresenter;
+    private MainActivityViewModel mainActivityViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,21 +47,53 @@ public class MainActivity extends AppCompatActivity implements FirstPageFragment
         btn_add_todo = (ImageView)findViewById(R.id.btn_add);
         progress_bar_container = (ConstraintLayout)findViewById(R.id.progress_bar_container);
 
-        mainPresenter = new MainPresenter(this);
         fragmentManager = this.getSupportFragmentManager();
+
+        mainActivityViewModel = ViewModelProviders.of(this).get(MainActivityViewModel.class);
+
+        mainActivityViewModel.init();
+
+        mainActivityViewModel.getTodosLiveData().observe(this, new Observer<JSONObject>() {
+            @Override
+            public void onChanged(JSONObject jsonObject) {
+
+                try {
+                    Gson gson = new Gson();
+                    JSONArray keys = jsonObject.names();
+                    if (keys!=null) {
+                        ArrayList<Long> timestamps = new ArrayList<>();
+                        for (int i = 0; i < keys.length(); i++) {
+                            String key = keys.getString(i);
+                            TodoModel todoModel = gson.fromJson(jsonObject.get(key).toString(), TodoModel.class);
+                            timestamps.add(todoModel.getTs());
+                        }
+                        todosAdapter.updateData(jsonObject, timestamps);
+                        progress_bar_container.setVisibility(View.GONE);
+                    } else {
+                        showFirstPageFragment();
+                        progress_bar_container.setVisibility(View.GONE);
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
 
         OnRemoveTodoClickedListener onRemoveTodoClickedListener = new OnRemoveTodoClickedListener() {
             @Override
             public void onRemoveTodoClicked(String key) {
-                mainPresenter.onRemoveTodo(key);
+                mainActivityViewModel.removeTodo(key);
             }
         };
 
         btn_add_todo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mainPresenter.onAddTodo(edt_input.getText().toString());
+                mainActivityViewModel.addTodo(edt_input.getText().toString());
                 edt_input.setText("");
+                hideKeyboard(btn_add_todo);
             }
         });
 
@@ -67,8 +103,9 @@ public class MainActivity extends AppCompatActivity implements FirstPageFragment
                 if ((event.getAction() == KeyEvent.ACTION_DOWN) &&
                         (keyCode == KeyEvent.KEYCODE_ENTER)) {
                     if (!TextUtils.isEmpty(edt_input.getText())) {
-                        mainPresenter.onAddTodo(edt_input.getText().toString());
+                        mainActivityViewModel.addTodo(edt_input.getText().toString());
                         edt_input.setText("");
+                        hideKeyboard(btn_add_todo);
                     }
                 }
                 return false;
@@ -79,8 +116,6 @@ public class MainActivity extends AppCompatActivity implements FirstPageFragment
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(linearLayoutManager);
         recyclerView.setAdapter(todosAdapter);
-
-        mainPresenter.onRequestData(getApplicationContext());
     }
 
     private void hideKeyboard(View view) {
@@ -97,30 +132,8 @@ public class MainActivity extends AppCompatActivity implements FirstPageFragment
 
     @Override
     public void onFirstTodoAdded(String todoText) {
-        mainPresenter.onAddTodo(todoText);
+        mainActivityViewModel.addTodo((todoText));
         getSupportFragmentManager().beginTransaction().remove(getSupportFragmentManager().findFragmentById(R.id.fragmentContainer)).commit();
         hideKeyboard(btn_add_todo);
-    }
-
-    @Override
-    public void onAddTodoResult() {
-        hideKeyboard(btn_add_todo);
-    }
-
-    @Override
-    public void onNoDataAvailable() {
-        showFirstPageFragment();
-        progress_bar_container.setVisibility(View.GONE);
-    }
-
-    @Override
-    public void onDataAvailable(JSONObject data, ArrayList<Long> timestamps) {
-        todosAdapter.updateData(data, timestamps);
-        progress_bar_container.setVisibility(View.GONE);
-    }
-
-    @Override
-    public void setAdapterData(JSONObject data, ArrayList<Long> timestamps) {
-        todosAdapter.updateData(data, timestamps);
     }
 }
